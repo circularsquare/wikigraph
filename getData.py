@@ -11,23 +11,34 @@ allLocations = {}
 
 def saveData(DATA):
     pages = DATA['query']['pages']
+    placesToLink = []
     for pageid in pages:
         page = pages[pageid]
         if 'coordinates' in page:
             coordinates = str(page['coordinates'][0]['lat']) + ',' + str(page['coordinates'][0]['lon'])
-            if(random.random()<.0001):
+            placesToLink.append(page)
+            if(random.random()<1):
                 print(page['title'])
                 print(coordinates)
-            PARAMS = {
-                "action": "query",
-                "format": "json",
-                "pageids": pageid,
-                "prop": "links",
-                "pllimit": 500,
-                "plnamespace": 0}
-            R = S.get(url=URL, params=PARAMS)
-            linkDATA = R.json()
-            links = [link['title'] for link in linkDATA['query']['pages'][pageid]['links']]
+            done = False
+            links = []
+            plcontinue = '||'
+            while not done:
+                PARAMS = {
+                    "action": "query",
+                    "format": "json",
+                    "pageids": pageid,
+                    "prop": "links",
+                    "pllimit": 500,
+                    "plnamespace": 0,
+                    "plcontinue": plcontinue}
+                R = S.get(url=URL, params=PARAMS)
+                linkDATA = R.json()
+                if 'continue' in linkDATA:
+                    plcontinue = linkDATA['continue']['plcontinue']
+                else:
+                    done=True
+                links += [link['title'] for link in linkDATA['query']['pages'][pageid]['links']]
             finalDataEntry = {'links': links, 'id': pageid, 'coordinates': coordinates}
             global allLocations
             allLocations[page['title']] = finalDataEntry
@@ -40,13 +51,12 @@ def loop():
             "action": "query",
             "format": "json",
             "pageids": pageIds,
-            "prop": 'coordinates',
-        }
+            "prop": 'coordinates',}
         R = S.get(url=URL, params=PARAMS)
         DATA = R.json()
         saveData(DATA)
         currentIndex += 50
-        if currentIndex>500000:
+        if currentIndex>1000000:
             return
 def cleanLinks(locations):
     for pageName in locations:
